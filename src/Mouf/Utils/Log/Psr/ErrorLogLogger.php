@@ -1,74 +1,109 @@
 <?php
 /*
- * Copyright (c) 2012 David Negrier
+ * Copyright (c) 2013 David Negrier
  * 
  * See the file LICENSE.txt for copying permission.
  */
 
-namespace Mouf\Utils\Log;
+namespace Mouf\Utils\Log\Psr;
 
-use Mouf\Utils\Log\LogInterface;
+use Psr\Log\LoggerInterface;
+use Psr\Log\LogLevel;
+use Psr\Log\AbstractLogger;
 
 /**
  * A logger class that writes messages into the php error_log.
- * Note: any parameter passed in third parameter (in the $additional_parameters array) will be ignored
- * by this logger.
- *
- * @Component
  */
-class ErrorLogLogger implements LogInterface {
+class ErrorLogLogger extends AbstractLogger {
 	
-	public static $TRACE = 1;
-	public static $DEBUG = 2;
-	public static $INFO = 3;
-	public static $WARN = 4;
-	public static $ERROR = 5;
-	public static $FATAL = 6;
+	const EMERGENCY = 'emergency';
+	const ALERT = 'alert';
+	const CRITICAL = 'critical';
+	const ERROR = 'error';
+	const WARNING = 'warning';
+	const NOTICE = 'notice';
+	const INFO = 'info';
+	const DEBUG = 'debug';
+	
+	private static $levels = array(
+		'none'=>0,
+		'emergency'=>1,
+		'alert'=>2,
+		'critical'=>3,
+		'error'=>4,
+		'warning'=>5,
+		'notice'=>6,
+		'info'=>7,
+		'debug'=>8,
+	);
+	
 	
 	/**
 	 * The minimum level that will be tracked by this logger.
-	 * Any log with a level below this level will not be logger.
+	 * 1=emergency
+	 * 8=debug
 	 *
-	 * @Property
-	 * @Compulsory 
-	 * @OneOf "1","2","3","4","5","6"
-	 * @OneOfText "TRACE","DEBUG","INFO","WARN","ERROR","FATAL"
 	 * @var int
 	 */
-	public $level;
+	private $level;
 	
-	public function trace($string, \Exception $e=null, array $additional_parameters=array()) {
-		if($this->level<=self::$TRACE) {
-			self::logMessage("TRACE", $string, $e);
+	
+	/**
+	 * 
+	 * @param string $level The minimum level that will be tracked by this logger, as defined in the Psr\Log\LogLevel class. Must be one of: 'none', 'emergency', 'alert', 'critical', 'error', 'warning', 'notice', 'info', 'debug'.
+	 */
+	public function __construct($level = 'debug') {
+		if (!isset(self::$levels[$level])) {
+			throw new \Exception("Error, level '".$level."' is not a valid log level. The \$level property must be one of 'none', 'emergency', 'alert', 'critical', 'error', 'warning', 'notice', 'info', 'debug'");
 		}
-	}
-	public function debug($string, \Exception $e=null, array $additional_parameters=array()) {
-		if($this->level<=self::$DEBUG) {
-			self::logMessage("DEBUG", $string, $e);
-		}
-	}
-	public function info($string, \Exception $e=null, array $additional_parameters=array()) {
-		if($this->level<=self::$INFO) {
-			self::logMessage("INFO", $string, $e);
-		}
-	}
-	public function warn($string, \Exception $e=null, array $additional_parameters=array()) {
-		if($this->level<=self::$WARN) {
-			self::logMessage("WARN", $string, $e);
-		}
-	}
-	public function error($string, \Exception $e=null, array $additional_parameters=array()) {
-		if($this->level<=self::$ERROR) {
-			self::logMessage("ERROR", $string, $e);
-		}
-	}
-	public function fatal($string, \Exception $e=null, array $additional_parameters=array()) {
-		if($this->level<=self::$FATAL) {
-			self::logMessage("FATAL", $string, $e);
-		}
+		
+		$this->level = self::$levels[$level];
 	}
 
-	private static function logMessage($level, $string, $e=null) {
+    /**
+     * Logs with an arbitrary level.
+     *
+     * @param mixed $level
+     * @param string $message
+     * @param array $context
+     * @return null
+     */
+    public function log($level, $message, array $context = array()) {
+    	if (!isset(self::$levels[$level]) || $level == 'none') {
+    		throw new \Psr\Log\InvalidArgumentException("Error, level '".$level."' is not a valid log level. The \$level property must be one of 'emergency', 'alert', 'critical', 'error', 'warning', 'notice', 'info', 'debug'");
+    	}
+    	
+    	// If the level is greater than the max level we log, let's not log anything.
+    	if (self::$levels[$level] > $this->level) {
+    		return;
+    	}
+    	
+    	$exceptionText = '';
+    	if (isset($context['exception'])) {
+    		$e = $context['exception'];
+    		$exceptionText = "\n".self::getTextForException($e);
+    	}
+		$trace = debug_backtrace();
+		$string = self::interpolate((string) $message, $context);
+    	error_log(strtoupper($level).': '.$trace[1]['file']."(".$trace[1]['line'].") ".(isset($trace[2])?($trace[2]['class'].$trace[2]['type'].$trace[2]['function']):"")." -> ".$string.$exceptionText);
+    }
+    
+    /**
+     * Interpolates context values into the message placeholders.
+     */
+    private function interpolate($message, array $context = array())
+	{
+		// build a replacement array with braces around the context keys
+		$replace = array();
+	  	foreach ($context as $key => $val) {
+	      	$replace['{' . $key . '}'] = $val;
+	 	}
+	
+	  	// interpolate replacement values into the message and return
+	  	return strtr($message, $replace);
+	}
+	
+	/*private static function logMessage($level, $string, $e=null) {
 		if ($e == null) {
 			if (!$string instanceof \Exception) {
 				$trace = debug_backtrace();
@@ -81,7 +116,7 @@ class ErrorLogLogger implements LogInterface {
 			error_log($level.': '.$trace[1]['file']."(".$trace[1]['line'].") ".(isset($trace[2])?($trace[2]['class'].$trace[2]['type'].$trace[2]['function']):"")." -> ".$string."\n".self::getTextForException($e));
 		}
 
-	}
+	}*/
 	
 	
 	/**
@@ -90,7 +125,7 @@ class ErrorLogLogger implements LogInterface {
 	 *
 	 * @param \Exception $exception
 	 */
-	static function getTextForException(\Exception $exception) {
+	private static function getTextForException(\Exception $exception) {
 		// Now, let's compute the same message, but without the HTML markup for the error log.
 		$textTrace = "Message: ".$exception->getMessage()."\n";
 		$textTrace .= "File: ".$exception->getFile()."\n";
@@ -106,7 +141,7 @@ class ErrorLogLogger implements LogInterface {
 	 * @param unknown_type $backtrace
 	 * @return unknown
 	 */
-	static private function getTextBackTrace($backtrace) {
+	private static function getTextBackTrace($backtrace) {
 		$str = '';
 	
 		foreach ($backtrace as $step) {
