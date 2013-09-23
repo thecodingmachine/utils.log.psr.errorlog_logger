@@ -17,7 +17,7 @@ InstallUtils::init(InstallUtils::$INIT_APP);
 $moufManager = MoufManager::getMoufManager();
 if (!$moufManager->instanceExists("psr.errorLogLogger")) {
 	
-	$errorLogLogger = $moufManager->createInstance("Mouf\\Utils\\Log\\ErrorLogLogger");
+	$errorLogLogger = $moufManager->createInstance("Mouf\\Utils\\Log\\Psr\\ErrorLogLogger");
 	// Let's set a name for this instance (otherwise, it would be anonymous)
 	$errorLogLogger->setName("psr.errorLogLogger");
 	$errorLogLogger->getProperty("level")->setValue('warning');
