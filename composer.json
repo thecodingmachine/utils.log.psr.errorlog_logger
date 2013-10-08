@@ -26,8 +26,8 @@
     	"mouf": {
 	    	"install": [
 	    		{
-	    			"type": "file",
-	    			"file": "src/install.php"
+	    			"type": "class",
+	    			"file": "Mouf\\Utils\\Log\\Psr\\ErrorLogLoggerInstaller"
 	    		}
 	    	],
 	    	"logo": "logo.png"
