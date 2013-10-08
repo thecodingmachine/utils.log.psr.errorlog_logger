@@ -27,7 +27,7 @@
 	    	"install": [
 	    		{
 	    			"type": "class",
-	    			"file": "Mouf\\Utils\\Log\\Psr\\ErrorLogLoggerInstaller"
+	    			"class": "Mouf\\Utils\\Log\\Psr\\ErrorLogLoggerInstaller"
 	    		}
 	    	],
 	    	"logo": "logo.png"
