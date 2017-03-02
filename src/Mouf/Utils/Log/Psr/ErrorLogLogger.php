@@ -81,7 +81,9 @@ class ErrorLogLogger extends AbstractLogger {
     	$exceptionText = '';
     	if (isset($context['exception'])) {
     		$e = $context['exception'];
-    		$exceptionText = "\n".self::getTextForException($e);
+			if ($e instanceof \Exception || $e instanceof \Throwable) {
+    			$exceptionText = "\n".self::getTextForException($e);
+			}
     	}
 		$trace = debug_backtrace();
 		$string = self::interpolate((string) $message, $context);
@@ -123,9 +125,9 @@ class ErrorLogLogger extends AbstractLogger {
 	 * Function called to display an exception if it occurs.
 	 * It will make sure to purge anything in the buffer before calling the exception displayer.
 	 *
-	 * @param \Exception $exception
+	 * @param \Throwable $exception
 	 */
-	private static function getTextForException(\Exception $exception) {
+	private static function getTextForException($exception) {
 		// Now, let's compute the same message, but without the HTML markup for the error log.
 		$textTrace = "Message: ".$exception->getMessage()."\n";
 		$textTrace .= "File: ".$exception->getFile()."\n";
